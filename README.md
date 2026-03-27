@@ -1,15 +1,15 @@
 # 🚀 AI Freelance Automation
 
-> Automatisation complète de la prospection freelance par IA — de la détection d'offre à la candidature
+> Automatisation complète de la prospection freelance par IA
 
 ## 🎯 Le problème
 
-Les freelances passent **2-3h/jour** à chercher des missions. Ce système réduit ça à jour **0 minute**.
+Les freelances passent **2-3h/jour** à chercher des missions. Ce système réduit ça à **0 minute**.
 
 ## ⚡ Fonctionnalités
 
-- **Scan automatique** : Codeur.com, Malt, LinkedIn — toutes les 30 min
-- **Scoring intelligent** : Matching IA entre profil et offres (0-100)
+- **Scan auto** : Codeur.com, Malt, LinkedIn — toutes les 30 min
+- **Scoring IA** : Matching profil/offres (0-100)
 - **Candidature assistée** : Messages personnalisés par consensus multi-IA
 - **Alertes temps réel** : Telegram dès qu'une offre >80% match
 - **Dashboard** : Vue consolidée des opportunités
@@ -28,10 +28,8 @@ Les freelances passent **2-3h/jour** à chercher des missions. Ce système rédu
 ```json
 {
   "platforms": ["codeur.com", "malt.fr"],
-  "keywords": ["IA", "automatisation", "MCP", "chatbot", "n8n"],
+  "keywords": ["IA", "automatisation", "MCP", "chatbot"],
   "min_budget": 500,
-  "scan_interval_minutes": 30,
-  "alert_telegram": true,
   "consensus_models": 3
 }
 ```
