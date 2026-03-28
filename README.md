@@ -132,6 +132,358 @@ Step 7: TELEGRAM ALERT
 
 > The system does in 30 seconds what takes 45 minutes manually: browse projects, evaluate fit, write a personalized offer, and submit it. Running 24/7, it ensures you never miss a high-value project because you were sleeping or busy.
 
+
+
+---
+
+## Complete Configuration Reference
+
+### Environment Variables
+
+| Variable | Required | Default | Description |
+|----------|----------|---------|-------------|
+| `CODEUR_EMAIL` | Yes | - | Your Codeur.com login email |
+| `CODEUR_PASSWORD` | Yes | - | Your Codeur.com password |
+| `TELEGRAM_BOT_TOKEN` | Yes | - | Telegram bot token for notifications |
+| `TELEGRAM_CHAT_ID` | Yes | - | Your Telegram chat ID |
+| `CDP_ENDPOINT` | No | `http://localhost:9222` | Chrome DevTools Protocol endpoint |
+| `SCAN_INTERVAL` | No | `1800` | Seconds between scans (default 30min) |
+| `MIN_SCORE` | No | `60` | Minimum AI score to auto-apply (0-100) |
+| `MAX_PAGES` | No | `3` | Number of Codeur.com pages to scrape |
+| `DB_PATH` | No | `data/prospection.db` | SQLite database path |
+| `LOG_LEVEL` | No | `INFO` | Logging level (DEBUG, INFO, WARNING, ERROR) |
+| `LINKEDIN_EMAIL` | No | - | LinkedIn login for social posting |
+| `LINKEDIN_PASSWORD` | No | - | LinkedIn password |
+| `DRY_RUN` | No | `false` | If true, do not actually submit offers |
+| `OFFER_TEMPLATE` | No | `default` | Which offer template to use |
+| `MAX_DAILY_OFFERS` | No | `10` | Maximum offers to submit per day |
+
+### Keyword Configuration
+
+Keywords are stored in `config/keywords.json`:
+
+```json
+{
+  "include": [
+    "python", "ai", "artificial intelligence", "machine learning",
+    "automation", "scraping", "api", "django", "fastapi", "flask",
+    "bot", "trading", "data", "nlp", "devops", "docker",
+    "kubernetes", "backend", "microservices", "etl", "pipeline",
+    "deep learning", "tensorflow", "pytorch", "langchain",
+    "agent", "chatbot", "voice assistant", "whisper"
+  ],
+  "exclude": [
+    "wordpress theme", "logo design", "basic html", "wix",
+    "shopify theme", "simple website", "prestashop", "joomla",
+    "graphic design", "illustration", "video editing"
+  ],
+  "boost": {
+    "ai": 15,
+    "python": 10,
+    "automation": 12,
+    "trading": 20,
+    "agent": 18,
+    "machine learning": 15,
+    "devops": 8
+  }
+}
+```
+
+### Scoring Formula Breakdown
+
+The AI scoring system evaluates each project on a 0-100 scale:
+
+```
+TOTAL_SCORE = (KEYWORD_SCORE * 0.30) + (BUDGET_SCORE * 0.25)
+            + (TIMELINE_SCORE * 0.20) + (COMPETITION_SCORE * 0.15)
+            + (CLIENT_SCORE * 0.10)
+
+Where:
+  KEYWORD_SCORE (0-100):
+    - Base: count of matching keywords * 10
+    - Boost: sum of boost values for matched keywords
+    - Cap: 100
+
+  BUDGET_SCORE (0-100):
+    - budget >= 2000 EUR: 100
+    - budget >= 1000 EUR: 80
+    - budget >= 500 EUR: 60
+    - budget >= 200 EUR: 40
+    - budget < 200 EUR: 20
+    - budget not specified: 50
+
+  TIMELINE_SCORE (0-100):
+    - deadline > 30 days: 100 (comfortable)
+    - deadline 14-30 days: 80
+    - deadline 7-14 days: 60
+    - deadline 3-7 days: 40
+    - deadline < 3 days: 20 (too rushed)
+
+  COMPETITION_SCORE (0-100):
+    - 0 applicants: 100 (no competition)
+    - 1-3 applicants: 80
+    - 4-7 applicants: 60
+    - 8-15 applicants: 40
+    - 15+ applicants: 20
+
+  CLIENT_SCORE (0-100):
+    - verified client + good history: 100
+    - verified client: 80
+    - new client: 60
+    - no info: 40
+```
+
+### Decision Thresholds
+
+| Score Range | Action | Description |
+|-------------|--------|-------------|
+| 80-100 | **Auto-apply immediately** | High-value match, submit personalized offer |
+| 60-79 | **Auto-apply with review** | Good match, apply but flag for review |
+| 40-59 | **Flag for manual review** | Telegram alert, no auto-apply |
+| 0-39 | **Skip** | Log only, no notification |
+
+---
+
+## Troubleshooting Guide
+
+### Common Errors and Fixes
+
+#### Error: CDP connection refused
+
+```
+ConnectionRefusedError: [Errno 111] Connection refused (localhost:9222)
+```
+
+**Cause**: Chrome is not running with remote debugging enabled.
+**Fix**:
+```bash
+# Launch Chrome with CDP enabled
+google-chrome --remote-debugging-port=9222 --no-first-run --no-default-browser-check &
+
+# Or use headless mode
+google-chrome --headless --remote-debugging-port=9222 &
+
+# Verify CDP is running
+curl http://localhost:9222/json/version
+```
+
+#### Error: Codeur.com anti-bot detection
+
+```
+ERROR: Cloudflare challenge detected on codeur.com
+```
+
+**Cause**: Too many requests or suspicious patterns.
+**Fix**:
+- Increase `SCAN_INTERVAL` to 3600 (1 hour)
+- Use a residential proxy
+- Add random delays between page loads
+- Clear browser cookies and restart CDP
+
+#### Error: Telegram notification failed
+
+```
+ERROR: Telegram API returned 401 Unauthorized
+```
+
+**Cause**: Invalid bot token or chat ID.
+**Fix**:
+```bash
+# Test your bot token
+curl "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/getMe"
+
+# Get your chat ID
+curl "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/getUpdates"
+# Look for "chat":{"id": YOUR_CHAT_ID}
+```
+
+#### Error: SQLite database locked
+
+```
+sqlite3.OperationalError: database is locked
+```
+
+**Cause**: Multiple processes writing simultaneously.
+**Fix**:
+```python
+# Enable WAL mode in db_sync.py
+conn = sqlite3.connect(DB_PATH)
+conn.execute("PRAGMA journal_mode=WAL")
+conn.execute("PRAGMA busy_timeout=5000")
+```
+
+#### Error: Offer submission failed
+
+```
+ERROR: Could not find submit button on project page
+```
+
+**Cause**: Codeur.com UI changed or page did not load completely.
+**Fix**:
+- Update CSS selectors in `cdp.py`
+- Increase page load timeout
+- Check if you are logged in (session may have expired)
+
+### Performance Tuning
+
+| Parameter | Default | Recommended | Effect |
+|-----------|---------|-------------|--------|
+| `SCAN_INTERVAL` | 1800s | 3600s | Reduces anti-bot risk |
+| `MAX_PAGES` | 3 | 5 | Finds more projects |
+| `MIN_SCORE` | 60 | 70 | Higher quality matches |
+| `MAX_DAILY_OFFERS` | 10 | 5 | Prevents over-application |
+
+---
+
+## Development Guide: Adding New Platforms
+
+The system is designed to be extensible. Here is how to add a new platform like Malt or Upwork.
+
+### Step 1: Create a New Scraper
+
+```python
+# scrapers/malt_scraper.py
+from scrapers.base import BaseScraper
+
+class MaltScraper(BaseScraper):
+    PLATFORM = "malt"
+    BASE_URL = "https://www.malt.fr"
+    
+    async def fetch_projects(self, max_pages: int = 3) -> list[dict]:
+        """Scrape project listings from Malt."""
+        projects = []
+        for page in range(1, max_pages + 1):
+            url = f"{self.BASE_URL}/projects?page={page}"
+            html = await self.fetch_page(url)
+            projects.extend(self.parse_listings(html))
+        return projects
+    
+    def parse_listings(self, html: str) -> list[dict]:
+        """Extract project details from HTML."""
+        # Use BeautifulSoup or regex to extract:
+        # - title, description, budget, deadline, client info
+        # Return list of dicts matching the standard schema
+        pass
+    
+    async def apply(self, project: dict, offer_text: str) -> bool:
+        """Submit an offer via CDP automation."""
+        # Navigate to project page
+        # Fill in offer form
+        # Submit
+        pass
+```
+
+### Step 2: Register the Scraper
+
+```python
+# scrapers/__init__.py
+from scrapers.codeur_scraper import CodeurScraper
+from scrapers.malt_scraper import MaltScraper
+
+SCRAPERS = {
+    "codeur": CodeurScraper,
+    "malt": MaltScraper,
+}
+```
+
+### Step 3: Add Platform-Specific Keywords
+
+```json
+// config/malt_keywords.json
+{
+  "include": ["python", "data engineer", "mlops", "cloud architect"],
+  "exclude": ["wordpress", "graphic design"],
+  "boost": {"mlops": 20, "data engineer": 15}
+}
+```
+
+### Step 4: CDP Selectors
+
+Create platform-specific selectors for browser automation:
+
+```python
+# cdp/malt_selectors.py
+SELECTORS = {
+    "login_email": "input[name='email']",
+    "login_password": "input[name='password']",
+    "login_submit": "button[type='submit']",
+    "project_title": "h1.project-title",
+    "offer_textarea": "textarea.proposal-text",
+    "offer_price": "input.proposal-price",
+    "offer_submit": "button.submit-proposal",
+}
+```
+
+---
+
+## Metrics Dashboard
+
+The SQLite database tracks everything. Here are the key queries for building a dashboard:
+
+### Win Rate by Month
+
+```sql
+SELECT 
+  strftime('%Y-%m', created_at) as month,
+  COUNT(*) as total_offers,
+  SUM(CASE WHEN status = 'won' THEN 1 ELSE 0 END) as wins,
+  ROUND(100.0 * SUM(CASE WHEN status = 'won' THEN 1 ELSE 0 END) / COUNT(*), 1) as win_rate,
+  SUM(CASE WHEN status = 'won' THEN amount ELSE 0 END) as revenue
+FROM codeur_offers
+GROUP BY month
+ORDER BY month DESC;
+```
+
+### Score Distribution
+
+```sql
+SELECT 
+  CASE 
+    WHEN score >= 80 THEN '80-100 (auto-apply)'
+    WHEN score >= 60 THEN '60-79 (apply + review)'
+    WHEN score >= 40 THEN '40-59 (manual review)'
+    ELSE '0-39 (skipped)'
+  END as score_range,
+  COUNT(*) as count,
+  ROUND(AVG(amount), 0) as avg_budget
+FROM codeur_offers
+GROUP BY score_range
+ORDER BY score_range DESC;
+```
+
+### ROI Calculation
+
+```sql
+SELECT 
+  COUNT(*) as total_offers,
+  SUM(CASE WHEN status = 'won' THEN amount ELSE 0 END) as total_revenue,
+  ROUND(SUM(CASE WHEN status = 'won' THEN amount ELSE 0 END) / COUNT(*), 2) as revenue_per_offer,
+  -- Assuming 2 hours setup + 0 marginal cost per offer
+  ROUND(SUM(CASE WHEN status = 'won' THEN amount ELSE 0 END) / 2.0, 2) as effective_hourly_rate
+FROM codeur_offers;
+```
+
+---
+
+## Manual vs Automated Prospection
+
+| Aspect | Manual | Automated (This System) |
+|--------|--------|------------------------|
+| **Time per scan** | 45 minutes | 30 seconds |
+| **Scans per day** | 2-3 (realistic) | 48 (every 30 min) |
+| **Projects reviewed** | 10-15 per scan | 30-50 per scan |
+| **Offer quality** | High (handwritten) | High (AI-generated, personalized) |
+| **Response time** | Hours (when you check) | Minutes (24/7 monitoring) |
+| **Consistency** | Variable (mood, energy) | 100% consistent |
+| **Night/weekend** | No | Yes |
+| **Cost** | Your time (~55 EUR/h) | ~2 EUR/day (electricity) |
+| **Monthly time invested** | 40-60 hours | 0 hours (after setup) |
+| **Monthly time saved** | - | 40-60 hours |
+| **Equivalent value saved** | - | 2,200-3,300 EUR/month |
+
+> **Bottom line**: The system replaces 40-60 hours/month of manual browsing, evaluating, and applying. At 55 EUR/h, that is 2,200-3,300 EUR of time saved per month. The system pays for itself on the first won project.
+
+
 ## License
 
 MIT License — Free for personal and commercial use.
