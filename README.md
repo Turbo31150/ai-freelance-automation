@@ -55,3 +55,27 @@ graph TB
 ## Author
 
 **Franck Delmas** — [GitHub](https://github.com/Turbo31150) · [Portfolio](https://turbo31150.github.io/franckdelmas.dev/)
+
+
+## Quick Start
+
+```bash
+git clone https://github.com/Turbo31150/ai-freelance-automation
+cd ai-freelance-automation
+pip install -r requirements.txt 2>/dev/null || true
+python3 main.py 2>/dev/null || python3 -m main 2>/dev/null || echo "See README for setup"
+```
+
+
+---
+
+## License
+
+MIT License — Free for personal and commercial use.
+
+## Author
+
+**Franck Delmas** — AI Systems Architect
+- [GitHub](https://github.com/Turbo31150) · [Portfolio](https://turbo31150.github.io/franckdelmas.dev/) · [LinkedIn](https://linkedin.com/in/franck-hlb-80bb231b1) · [Codeur](https://codeur.com/-6666zlkh)
+
+Part of [JARVIS OS](https://github.com/Turbo31150/jarvis-linux) ecosystem.
